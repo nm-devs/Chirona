@@ -32,3 +32,15 @@ DELAY_BETWEEN_CLASSES = 50 # milliseconds
 # ── Model ───────────────────────────────────────────
 NUM_CLASSES = 3
 DATA_DIR= "./data/raw"
+
+# augmentation paths
+AUGMENTED_DIR = "data/augmented"
+
+# augmentation settings
+AUGMENT_CONFIG = {
+    "flip": True,
+    "rotate": True,
+    "brightness": True,
+    "zoom": False,
+    "factor": 5
+}

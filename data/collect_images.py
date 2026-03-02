@@ -78,7 +78,8 @@ for class_id in range(NUM_CLASSES):
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
         cv2.putText(frame, 'Press "Q" to quit', (50,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
         cv2.imshow('Collect', frame)
-        cv2.imwrite(os.path.join(class_dir, f'img_{img_num}.jpg'), frame)
+        timestamp = int(time.time() * 1000)
+        cv2.imwrite(os.path.join(class_dir, f'{timestamp}.jpg'), frame)
         cv2.waitKey(DELAY_BETWEEN_CLASSES) # small delay to avoid duplicates
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
