@@ -25,7 +25,7 @@ FINGER_CIRCLE_RADIUS = 15     # Radius for fingertip circles
 WINDOW_TITLE = "Hand Tracking"
 
 # ── Data Collection ───────────────────────────────────
-IMAGES_PER_CLASS = 300
+IMAGES_PER_CLASS = 50
 COUNTDOWN = 3
 DELAY_BETWEEN_CLASSES = 50 # milliseconds
 
