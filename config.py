@@ -1,3 +1,8 @@
+import os
+
+# ── Base Directory ────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ── Camera ────────────────────────────────────────────
 CAMERA_INDEX = 0              # Default webcam index
 CAM_WIDTH = 1280              # Capture width
@@ -8,7 +13,7 @@ MAX_HANDS = 2                 # Max simultaneous hands
 DETECTION_CONFIDENCE = 0.7    # Min detection confidence
 TRACKING_CONFIDENCE = 0.7     # Min tracking confidence
 
-# ── Mouse Controller ─────────────────────────────────
+# ── Mouse Controller ──────────────────────────────────
 SMOOTHING_ALPHA = 0.3         # Exponential smoothing (0.2–0.35)
 FRAME_REDUCTION = 150         # Edge padding for coordinate mapping
 
@@ -30,7 +35,7 @@ IMAGES_PER_CLASS = 50
 COUNTDOWN = 3
 DELAY_BETWEEN_CLASSES = 50 # milliseconds
 
-# ── Model ───────────────────────────────────────────
+# ── Model ─────────────────────────────────────────────
 NUM_CLASSES = len(CLASSES)
 DATA_DIR= "./data/raw"
 
@@ -40,7 +45,7 @@ DATA_DIR= "./data/raw"
 # ── ASL MNIST ─────────────────────────────────────────
 ASL_MNIST_DIR = "data/asl_mnist"
 
-# augmentation settings
+# ── Augmentation Settings ─────────────────────────────
 AUGMENT_CONFIG = {
     "flip": True,
     "rotate": True,
@@ -48,3 +53,10 @@ AUGMENT_CONFIG = {
     "zoom": False,
     "factor": 5
 }
+
+# ── Hyperparameter Tuning ─────────────────────────────
+RF_PARAM_GRID = {
+    "n_estimators": [50, 100, 200],
+    "max_depth": [None, 10, 20, 30],
+}
+CV_FOLDS = 5

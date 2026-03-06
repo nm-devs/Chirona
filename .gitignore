@@ -7,3 +7,5 @@
 __pycache__/
 models/saved/
 .env
+CONTEXT_DUMP.md
+EXTRACT_LANDMARKS_GUIDE.txt
