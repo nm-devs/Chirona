@@ -60,3 +60,7 @@ RF_PARAM_GRID = {
     "max_depth": [None, 10, 20, 30],
 }
 CV_FOLDS = 5
+
+# ── Prediction Smoothing ─────────────────────────────
+SMOOTHING_WINDOW_SIZE = 15       # Number of recent predictions to keep
+SMOOTHING_DOMINANCE_THRESHOLD = 0.6  # 60% dominance required to update display

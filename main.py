@@ -1,15 +1,16 @@
-from xml.parsers.expat import model
-
 import cv2
 import time
+import pickle
 from core.hand_detector import HandDetector
 from core.feature_extractor import FeatureExtractor
+from utils.prediction_smoother import PredictionSmoother
 from controllers.mouse_controller import MouseController
 from controllers.sign_language_controller import SignLanguageController
 from config import (
     CAMERA_INDEX, CAM_WIDTH, CAM_HEIGHT,
     MAX_HANDS, DETECTION_CONFIDENCE, TRACKING_CONFIDENCE,
     SMOOTHING_ALPHA, WINDOW_TITLE,
+    SMOOTHING_WINDOW_SIZE, SMOOTHING_DOMINANCE_THRESHOLD
 )
 
 # Initialize controllers
@@ -26,18 +27,20 @@ current_max_hands = MAX_HANDS
 
 fe=FeatureExtractor(use_z=False)
 
-import pickle 
+# Load trained model
 try:
     with open(".modelss/trained_model.pkl", "rb") as f:
         model = pickle.load(f)
 except FileNotFoundError:
     print("Trained model not found. Please run 'train_model.py' first to create the model file.")
     model=None
+
 # Initialize webcam
 cap = cv2.VideoCapture(CAMERA_INDEX)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
 
+# Check if camera opened successfully
 if not cap.isOpened():
     print("Failed to open camera")
     exit()
@@ -45,8 +48,14 @@ if not cap.isOpened():
 # Runtime state
 prev_time = 0
 mode = "mouse"
+
 # hand detection mode toggle
 max_hands_mode = 1 #start with single hand mode
+
+# Initialize prediction smoother
+smoother = PredictionSmoother(window_size=SMOOTHING_WINDOW_SIZE, dominance_threshold=SMOOTHING_DOMINANCE_THRESHOLD)
+displayed_sign = None
+
 # Main loop
 while True:
     success, frame = cap.read()
@@ -66,6 +75,16 @@ while True:
         # Test FeatureExtractor
         features = fe.extract(landmarks)
         normalized = fe.normalize(features)
+
+        # Predict sign 
+        if model is not None:
+            prediction = model.predict(normalized.reshape(1, -1))[0]
+            smoother.add_prediction(prediction)
+            stable_prediction = smoother.get_stable_prediction()
+
+            # Update displayed sign if stable prediction is available
+            if stable_prediction is not None:
+                displayed_sign = stable_prediction
         
         # Print debug info
         print(f"Features shape: {features.shape}")
@@ -88,6 +107,11 @@ while True:
     cv2.putText(frame, f'Hands: {max_hands_mode}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     cv2.putText(frame, f'Mode: {mode}', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
+    # Display sign if available
+    if displayed_sign:
+        cv2.putText(frame, f'Sign: {displayed_sign}', (10, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
     cv2.imshow(WINDOW_TITLE, frame)
 
     # Handle keypresses
@@ -98,6 +122,7 @@ while True:
         break"""
     
     key = cv2.waitKey(1) & 0xFF
+    
     if key == ord('m'):
         mode = "sign_language" if mode == "mouse" else "mouse"
     if key == ord('h'):
@@ -107,5 +132,6 @@ while True:
         print(f'Hand dectection mode: {max_hands_mode} hand(s)')
     if key == 27 or cv2.getWindowProperty(WINDOW_TITLE, cv2.WND_PROP_VISIBLE) < 1:
         break
+
 cap.release()
 cv2.destroyAllWindows()
