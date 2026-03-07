@@ -13,36 +13,12 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 from core.hand_detector import HandDetector
+from core.feature_extractor import FeatureExtractor
 from config import (
     MAX_HANDS,
     DETECTION_CONFIDENCE,
     TRACKING_CONFIDENCE
 )
-
-def get_hand_box(landmarks):
-    """
-    Calculate bounding box around 21 hand landmarks.
-    landmarks: MediaPipe landmarks object
-    Returns: (x_min, y_min, x_max, y_max) normalized to [0,1]
-    """
-    xs = [lm.x for lm in landmarks.landmark]
-    ys = [lm.y for lm in landmarks.landmark]
-    
-    x_min, x_max = min(xs), max(xs)
-    y_min, y_max = min(ys), max(ys)
-    
-    return x_min, y_min, x_max, y_max
-
-def normalize_landmarks(landmarks, box):
-    """Normalize 21 landmarks to 42 values relative to bounding box."""
-    x_min, y_min, x_max, y_max = box
-    width = x_max - x_min if x_max - x_min != 0 else 1e-6
-    height = y_max - y_min if y_max - y_min != 0 else 1e-6
-    normalized = []
-    for lm in landmarks.landmark:
-        normalized.append((lm.x - x_min) / width)
-        normalized.append((lm.y - y_min) / height)
-    return normalized
 
 def extract_landmarks_batch(
         raw_data_dir="./data/raw",
@@ -55,6 +31,7 @@ def extract_landmarks_batch(
         detection_confidence=DETECTION_CONFIDENCE,
         tracking_confidence=TRACKING_CONFIDENCE
     )
+    fe =FeatureExtractor(use_z=False)
 
     all_data = []
     all_labels = []
@@ -109,11 +86,9 @@ def extract_landmarks_batch(
                 continue
 
             for hand in hands_data:
-                landmarks=hand['landmarks']
-
-                box = get_hand_box(landmarks)
-
-                normalized = normalize_landmarks(landmarks, box)
+                landmarks = hand['landmarks']
+                features = fe.extract(landmarks)
+                normalized = fe.normalize(features)
                 all_data.append(normalized)
                 all_labels.append(class_label)
                 successful += 1

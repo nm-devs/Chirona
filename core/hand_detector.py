@@ -45,5 +45,20 @@ class HandDetector:
                     "landmarks": hand_landmarks,
                     "positions": positions
                 })
-        
+        def draw_hands(self, frame, hands_data):
+            for hand in hands_data:
+                self.mp_drawing.draw_landmarks(
+                    frame,
+                    hand['landmarks'],
+                    self.mp_hands.HAND_CONNECTIONS,
+                    self.mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2),
+                    self.mp_drawing.DrawingSpec(color=(255,0,0), thickness=2)
+                )
+                #draw label
+                if hand['positions']:
+                    #wrist is landmark 0
+                    wrist_x, wrist_y = hand['positions'][0][1], hand['positions'][0][2]
+                    cv2.putText(frame, hand['label'], (wrist_x - 10, wrist_y - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+                return frame
         return hands_data
