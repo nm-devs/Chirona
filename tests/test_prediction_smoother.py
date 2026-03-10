@@ -1,4 +1,5 @@
 import pytest
+
 from utils.prediction_smoother import PredictionSmoother
 
 

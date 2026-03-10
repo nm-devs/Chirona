@@ -1,8 +1,15 @@
+"""
+Translates hand landmarks into mouse movement and click actions on the user's OS.
+
+Features precise cursor control, jitter reduction mapping, and specific gestures
+for left-click, right-click, and scrolling.
+"""
 import time
 import math
 import cv2
 import numpy as np
 import pyautogui
+
 from utils.drawing_utils import draw_hand_points, draw_hand_skeleton
 from config import (
     CAM_WIDTH, CAM_HEIGHT, FRAME_REDUCTION,

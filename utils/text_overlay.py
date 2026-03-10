@@ -1,3 +1,11 @@
+"""
+Text overlay and UI utilities for the main application.
+
+Provides helper methods to render prediction labels, confidence scores,
+and progress bars on top of webcam frames.
+"""
+import cv2
+
 from config import (
     COLOR_PRIMARY, COLOR_WARNING, COLOR_DANGER, COLOR_BLACK_BG,
     CONFIDENCE_HIGH, CONFIDENCE_MEDIUM

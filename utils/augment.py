@@ -1,8 +1,12 @@
-# the purpose of this file is to augment the dataset
+"""
+Data augmentation utilities.
 
+Provides image transformation functions like rotation, flip, and zoom using OpenCV.
+"""
 import cv2
 import numpy as np 
 import random
+
 from pathlib import Path 
 
 # augmentations

@@ -1,7 +1,14 @@
+"""
+SignClassifier loads a trained scikit-learn model to predict hand gestures.
+
+Provides inference methods to calculate the most likely gesture label and
+confidence score based on extracted hand landmark features.
+"""
 import os
 import pickle
 import logging
 import numpy as np
+
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')

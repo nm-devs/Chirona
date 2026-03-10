@@ -1,4 +1,8 @@
-# drawing helpers
+"""
+Drawing utilities for overlaying MediaPipe hand tracking visualizations.
+
+Handles drawing landmarks, bounding boxes, and hand skeletons for UI feedback.
+"""
 import cv2
 
 # Fingertip landmark indices

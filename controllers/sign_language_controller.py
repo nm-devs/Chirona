@@ -1,4 +1,11 @@
+"""
+Controller for processing visual feedback in sign language translation mode.
+
+Handles the rendering of hand tracking points and skeletons on the camera feed
+when the user is spelling out signs.
+"""
 import cv2
+
 from utils.drawing_utils import draw_hand_points, draw_hand_skeleton
 
 

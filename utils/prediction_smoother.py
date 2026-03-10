@@ -1,3 +1,9 @@
+"""
+Temporal smoothing for machine learning predictions.
+
+Applies a moving window over recent predictions to filter out single-frame
+flickers and report a stable, dominant gesture prediction.
+"""
 from collections import Counter, deque
 from config import SMOOTHING_WINDOW_SIZE, SMOOTHING_DOMINANCE_THRESHOLD
 

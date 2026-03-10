@@ -39,9 +39,6 @@ DELAY_BETWEEN_CLASSES = 50 # milliseconds
 NUM_CLASSES = len(CLASSES)
 DATA_DIR= "./data/raw"
 
-# augmentation paths
-# AUGMENTED_DIR = "data/augmented"
-
 # ── ASL MNIST ─────────────────────────────────────────
 ASL_MNIST_DIR = "data/asl_mnist"
 
@@ -61,7 +58,7 @@ RF_PARAM_GRID = {
 }
 CV_FOLDS = 5
 
-# ── Prediction Smoothing ─────────────────────────────
+# ── Prediction Smoothing ──────────────────────────────
 SMOOTHING_WINDOW_SIZE = 15       # Number of recent predictions to keep
 SMOOTHING_DOMINANCE_THRESHOLD = 0.6  # 60% dominance required to update display
 
@@ -79,3 +76,10 @@ CONFIDENCE_HIGH = 0.8             # Threshold for green prediction UI
 CONFIDENCE_MEDIUM = 0.5           # Threshold for yellow prediction UI
 
 CONFIDENCE_THRESHOLD=0.70          # Minimum confidence to display prediction (70%)
+# ── Sentence Builder ──────────────────────────────────
+CONFIRM_DURATION = 1.5            # Seconds to wait before confirming a word
+
+# ── Data Processing ───────────────────────────────────
+DEFAULT_PICKLE = "data/landmarks.pickle"
+EXPECTED_FEATURES = 42          # 21 landmarks × 2 (x, y)
+IMBALANCE_THRESHOLD = 0.5       # warn if any class has < 50% of the max count

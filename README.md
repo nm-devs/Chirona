@@ -32,55 +32,18 @@ A Python application that uses MediaPipe, OpenCV, and scikit-learn to detect han
 
 ## 📁 Project Structure
 
-```
+```text
 chirona/
-├── main.py                            # Entry point — webcam loop, mode switching
-├── config.py                          # All configurable constants & hyperparameters
-├── requirements.txt                   # Python dependencies
-├── README.md
-├── ROADMAP.md                         # Development roadmap & technical reference
-│
-├── core/                              # Detection, feature extraction, classification
-│   ├── hand_detector.py               # MediaPipe hand landmark detection
-│   ├── feature_extractor.py           # Landmark → normalized feature vector (42/63-D)
-│   ├── sign_classifier.py             # Loads trained model + label map for inference
-│   └── sentence_builder.py            # Word/sentence accumulation (placeholder)
-│
-├── controllers/                       # Mode controllers
-│   ├── mouse_controller.py            # Gesture-based mouse control (move, click, scroll)
-│   └── sign_language_controller.py    # Sign language interpreter mode
-│
-├── utils/                             # Shared utilities
-│   ├── drawing_utils.py               # Hand landmarks, skeleton, bounding box drawing
-│   ├── text_overlay.py                # Prediction display with confidence bar
-│   ├── prediction_smoother.py         # Sliding-window prediction stabilizer
-│   ├── data_loader.py                 # Loads landmarks.pickle, encodes labels, splits data
-│   └── augment.py                     # Image augmentation functions (flip, rotate, etc.)
-│
-├── data/                              # Data collection & preprocessing
-│   ├── collect_images.py              # Webcam capture script with countdown timer
-│   ├── extract_landmarks.py           # Extracts landmarks from images → landmarks.pickle
-│   ├── load_asl_mnist.py              # ASL MNIST CSV loader/converter
-│   ├── augment_dataset.py             # Runs augmentation pipeline on raw images
-│   ├── verify_data.py                 # Dataset quality checks & statistics
-│   ├── landmarks.pickle               # Extracted landmark dataset
-│   ├── raw/                           # Raw collected images (organized by letter)
-│   └── asl_mnist/                     # ASL MNIST CSV files
-│
-├── models/                            # Training, evaluation & saved weights
-│   ├── train_model.py                 # Train RandomForest classifier
-│   ├── evaluate_model.py              # Accuracy, confusion matrix, classification report
-│   ├── tune_model.py                  # GridSearchCV hyperparameter tuning
-│   └── saved/                         # Serialized models & label maps
-│       ├── model_rf.p                 # Base RandomForest model
-│       ├── model_rf_tuned.p           # Tuned RandomForest model
-│       ├── labels.pickle              # Label map (int → letter)
-│       └── confusion_matrix.png       # Evaluation visualization
-│
-├── tests/                             # Unit tests
-│   └── test_prediction_smoother.py    # PredictionSmoother test suite
-│
-└── assets/                            # Static assets & reference images
+├── core/                # Core ML & detection logic (classifiers, extractors)
+├── controllers/         # Application modes (mouse control, sign language)
+├── utils/               # Shared utilities (drawing, smoothing, text overlay)
+├── data/                # Data collection, extraction, and dataset loaders
+├── models/              # Training, evaluation scripts, and saved weights
+├── tests/               # Unit and integration tests
+├── main.py              # Application entry point
+├── config.py            # Global hyperparameters and UI constants
+├── requirements.txt     # Python dependencies
+└── ROADMAP.md           # Development roadmap & technical reference
 ```
 
 ## 🚀 Getting Started
@@ -174,4 +137,5 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current progress:
 > ⚠️ Project is actively in development — model training is ongoing and a live demo will be added upon completion.
 
 Made with ❤️ and Python
+
 Done By [Michael Musallam](https://github.com/michealmou) and [Nadim Baboun](https://github.com/nadeemtsf)
