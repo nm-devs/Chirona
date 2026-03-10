@@ -1,8 +1,3 @@
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-
 """
 Evaluates the performance of a trained model on the test set.
 
@@ -16,6 +11,11 @@ Parameters:
 Returns:
 - A dictionary containing evaluation metrics.
 """
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 def evaluate_model(model, X_test, y_test, class_labels=None, save_path=None):
 

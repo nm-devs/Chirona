@@ -1,8 +1,14 @@
-# dataset collection script
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+"""
+Interactive script for capturing dataset images via webcam.
+
+Provides a UI with countdowns to capture samples for each alphabet class defined
+in the config. Saves images to raw data directory.
+"""
+import os
+import sys
 import cv2
 import time
+
 from pathlib import Path
 from config import (
     CLASSES,
@@ -14,6 +20,8 @@ from config import (
     DATA_DIR,
     CAMERA_INDEX
 )
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 cap = cv2.VideoCapture(CAMERA_INDEX)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)

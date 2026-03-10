@@ -1,6 +1,12 @@
-# training script
-import pickle
+"""
+Training script for the sign language classifier.
+
+Loads landmark data and trains a RandomForest model, saving the resulting model
+and label mapping for inference.
+"""
 import os
+import pickle
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from utils.data_loader import load_landmark_data

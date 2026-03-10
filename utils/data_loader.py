@@ -1,6 +1,13 @@
+"""
+Data loading utilities for model training.
+
+Loads pre-extracted hand landmarks, splits them into train and test sets,
+and encodes string labels to integers.
+"""
 import pickle
 import os
 import numpy as np
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from config import BASE_DIR

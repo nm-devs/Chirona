@@ -1,25 +1,28 @@
-# ASL MNIST dataset loader / converter
-#
-# Loads sign_mnist_train.csv (and optionally sign_mnist_test.csv) from
-# Kaggle's ASL MNIST dataset and converts them into NumPy arrays ready
-# for the training pipeline.
-#
-# CSV format:
-#   Column 0  – label (0-25, maps 1:1 to A-Z; J=9 and Z=25 never appear)
-#   Columns 1-784 – grayscale pixel values for a 28x28 image
-#
-# Usage:
-#   python -m data.load_asl_mnist          # quick self-test
-#   from data.load_asl_mnist import load_asl_mnist
+"""
+ASL MNIST dataset loader and converter.
 
-import sys
+Loads sign_mnist_train.csv (and optionally sign_mnist_test.csv) from
+Kaggle's ASL MNIST dataset and converts them into NumPy arrays ready
+for the training pipeline.
+
+CSV format:
+  Column 0  - label (0-25, maps 1:1 to A-Z; J=9 and Z=25 never appear)
+  Columns 1-784 - grayscale pixel values for a 28x28 image
+
+Usage:
+  python -m data.load_asl_mnist          # quick self-test
+  from data.load_asl_mnist import load_asl_mnist
+"""
+
 import os
+import sys
 import csv
 import numpy as np
+
 from pathlib import Path
+from config import ASL_MNIST_DIR
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from config import ASL_MNIST_DIR
 
 # ── Label mapping ────────────────────────────────────────────────────────────
 

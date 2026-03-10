@@ -1,5 +1,12 @@
-import pickle
+"""
+Hyperparameter tuning for the sign language Random Forest classifier.
+
+Runs an exhaustive grid search using Cross-Validation to find the best tree parameters,
+and saves the most optimal model.
+"""
 import os
+import pickle
+
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score

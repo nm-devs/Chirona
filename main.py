@@ -1,3 +1,9 @@
+"""
+Main entry point for the Chirona application.
+
+Initializes the hardware, machine learning models, and controllers to translate
+real-time hand gestures into actionable commands or sign language translation.
+"""
 import cv2
 import time
 import sys

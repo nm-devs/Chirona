@@ -1,8 +1,14 @@
+"""
+Generates dummy training data and trains a quick mock RandomForest model.
+
+Useful for testing the inference pipeline and UI without needing a full dataset.
+"""
+import os
+import pickle
 import numpy as np
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.datasets import make_blobs
-import pickle
-import os
 
 # Create dummy training data
 X, y = make_blobs(n_samples=100, n_features=42, centers=5, random_state=42)

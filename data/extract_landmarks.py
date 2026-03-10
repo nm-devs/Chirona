@@ -1,12 +1,18 @@
-# landmark extraction script
+"""
+Batch processes raw image data to extract hand landmarks.
 
-import sys, os
+Runs MediaPipe over all collected images and saves the normalized features
+into a pickle file for model training.
+"""
+import os
+import sys
 import cv2
 import mediapipe as mp
 import numpy as np 
 import pickle 
-from pathlib import Path
 import logging
+
+from pathlib import Path
 from core.sign_classifier import SignClassifier
 from core.feature_extractor import FeatureExtractor
 from core.hand_detector import HandDetector

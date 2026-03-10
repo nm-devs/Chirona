@@ -1,10 +1,16 @@
-# the purpose of this file is to augment the dataset 
+"""
+Script to apply augmentations to the dataset images.
 
-import sys, os 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+Uses configuration from config.py to apply transformations like rotation and
+brightness changes to increase dataset robustness.
+"""
+import os
+import sys
 
 from utils.augment import augment_dataset
 from config import DATA_DIR, AUGMENT_CONFIG
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 if __name__ == "__main__":
     augment_dataset(

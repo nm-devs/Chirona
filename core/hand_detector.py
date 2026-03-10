@@ -1,5 +1,12 @@
+"""
+Wrapper around MediaPipe Hands for detecting hands in video frames.
+
+Detects hand presence and extracts normalized and pixel-level landmark
+coordinates for use by downstream classifiers and controllers.
+"""
 import cv2
 import mediapipe as mp
+
 from config import(
     MAX_HANDS,
     DETECTION_CONFIDENCE,
