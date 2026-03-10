@@ -22,9 +22,8 @@ from config import (
 pyautogui.PAUSE = 0
 pyautogui.FAILSAFE = True
 
-
 class MouseController:
-    def __init__(self, alpha=0.25, move_interval=0.01, dead_zone=3):
+    def __init__(self, alpha=0.25, move_interval=0.01, dead_zone=10):
         """
         Mouse controller with smoothing, safety, and throttling.
 
@@ -50,8 +49,15 @@ class MouseController:
         # Scroll tracking state
         self.prev_y1 = 0
 
-        # Click-and-drag state
+        # Pinch / click-and-drag state
+        self.is_pinching = False
+        self.pinch_start_time = 0
+        self.click_fired = False
         self.is_dragging = False
+        self.last_click_time = 0
+        self.drag_threshold = 0.3  # seconds: pinch longer than this becomes a drag
+        self.double_click_threshold = 0.35 # seconds: max time between pinches for double click
+        self.pending_tap_time = 0
 
     def process_frame(self, frame, hand, detector):
         """Process one frame in mouse-control mode."""
@@ -71,8 +77,7 @@ class MouseController:
         x3, y3 = positions[12][1], positions[12][2]  # Middle Finger Tip
         x4, y4 = positions[16][1], positions[16][2]  # Ring Finger Tip
 
-        # Add this line right below the others!
-        anchor_x, anchor_y = positions[5][1], positions[5][2] # Index Finger Knuckle
+        anchor_x, anchor_y = positions[5][1], positions[5][2]  # Index Finger Knuckle
 
         # Check scroll gesture (Thumb + Ring) first
         dist_scroll = math.hypot(x2 - x4, y2 - y4)
@@ -94,27 +99,59 @@ class MouseController:
             cv2.circle(frame, (anchor_x, anchor_y), FINGER_CIRCLE_RADIUS, COLOR_SECONDARY, cv2.FILLED)
             cv2.circle(frame, (x2, y2), FINGER_CIRCLE_RADIUS, COLOR_SECONDARY, cv2.FILLED)
 
-            # Move mouse
-            x_screen = np.interp(anchor_x, (FRAME_REDUCTION, CAM_WIDTH - FRAME_REDUCTION), (0, self.screen_w))
-            y_screen = np.interp(anchor_y, (FRAME_REDUCTION, CAM_HEIGHT - FRAME_REDUCTION), (0, self.screen_h))
-            self.move(x_screen, y_screen)
-
-            # Left click (Thumb + Index)
+            # Determine pinch state
             distance = math.hypot(x2 - x1, y2 - y1)
-            if distance < PINCH_DISTANCE:
-                if not self.is_dragging:
-                    # We just started a pinch
-                    self.is_dragging = True
-                    pyautogui.mouseDown(button='left')
+            pinching_now = distance < PINCH_DISTANCE
+
+            # Move cursor — freeze during click pinch, allow during drag
+            if not pinching_now or self.is_dragging:
+                x_screen = np.interp(anchor_x, (FRAME_REDUCTION, CAM_WIDTH - FRAME_REDUCTION), (0, self.screen_w))
+                y_screen = np.interp(anchor_y, (FRAME_REDUCTION, CAM_HEIGHT - FRAME_REDUCTION), (0, self.screen_h))
+                self.move(x_screen, y_screen)
+
+            now = time.time()
+
+            # Fire any pending single tap if the double-click window has expired
+            if self.pending_tap_time > 0 and (now - self.pending_tap_time) > self.double_click_threshold:
+                pyautogui.click(button='left')
+                self.pending_tap_time = 0
+                self.last_click_time = now
+
+            if pinching_now and not self.is_pinching:
+                # Pinch just started
+                self.is_pinching = True
+                self.pinch_start_time = now
+                self.click_fired = False
                 
-                # Keep drawing the circle while pinched
-                cv2.circle(frame, (x1, y1), FINGER_CIRCLE_RADIUS, COLOR_PRIMARY, cv2.FILLED)
-            
-            else:
+                # If we had a pending tap from a very recent release, this is a DOUBLE CLICK!
+                if self.pending_tap_time > 0:
+                    pyautogui.doubleClick(button='left')
+                    self.pending_tap_time = 0  # Consume it
+                    self.click_fired = True    # Prevent a single click on release
+                    self.last_click_time = now
+
+                cv2.circle(frame, (anchor_x, anchor_y), FINGER_CIRCLE_RADIUS, COLOR_PRIMARY, cv2.FILLED)
+
+            elif pinching_now and self.is_pinching:
+                # Sustained pinch — check if it should become a drag
+                cv2.circle(frame, (anchor_x, anchor_y), FINGER_CIRCLE_RADIUS, COLOR_PRIMARY, cv2.FILLED)
+                if not self.click_fired and (now - self.pinch_start_time) > self.drag_threshold:
+                    pyautogui.mouseDown(button='left')
+                    self.is_dragging = True
+                    self.click_fired = True
+
+            elif not pinching_now and self.is_pinching:
+                # Pinch just released
                 if self.is_dragging:
-                    # We just released a pinch
-                    self.is_dragging = False
+                    # End drag
                     pyautogui.mouseUp(button='left')
+                    self.is_dragging = False
+                elif not self.click_fired and (now - self.last_click_time) > CLICK_COOLDOWN:
+                    # Short pinch released — queue it to see if it becomes a double-click!
+                    self.pending_tap_time = now
+
+                self.is_pinching = False
+                self.click_fired = False
 
             # Right click (Thumb + Middle)
             distance_right = math.hypot(x2 - x3, y2 - y3)
@@ -155,29 +192,3 @@ class MouseController:
 
     def scroll(self, dy):
         pyautogui.scroll(dy)
-
-
-# =========================
-# TEST CODE (safe to keep)
-# =========================
-if __name__ == "__main__":
-    mouse = MouseController(alpha=0.3)
-
-    square = [
-        (200, 200),
-        (600, 200),
-        (600, 600),
-        (200, 600),
-        (200, 200),
-    ]
-
-    print("Testing mouse controller...")
-    print("Move mouse to TOP-LEFT corner to abort")
-
-    for x, y in square:
-        for _ in range(40):
-            mouse.move(x, y)
-            time.sleep(0.01)
-        time.sleep(0.3)
-
-    print("Testing complete")

@@ -7,10 +7,18 @@ brightness changes to increase dataset robustness.
 import os
 import sys
 
-from utils.augment import augment_dataset
-from config import DATA_DIR, AUGMENT_CONFIG
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from utils.augment import augment_dataset
+from config import DATA_DIR
+
+AUGMENT_CONFIG = {
+    "flip": True,
+    "rotate": True,
+    "brightness": True,
+    "zoom": False,
+    "factor": 5
+}
 
 if __name__ == "__main__":
     augment_dataset(

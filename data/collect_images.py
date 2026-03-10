@@ -9,19 +9,15 @@ import sys
 import cv2
 import time
 
-from pathlib import Path
-from config import (
-    CLASSES,
-    IMAGES_PER_CLASS,
-    CAM_HEIGHT,
-    CAM_WIDTH,
-    COUNTDOWN,
-    DELAY_BETWEEN_CLASSES,
-    DATA_DIR,
-    CAMERA_INDEX
-)
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from pathlib import Path
+from config import CAM_HEIGHT, CAM_WIDTH, DATA_DIR, CAMERA_INDEX
+
+CLASSES = list("abcdefghiklmnopqrstuvwxy")  # A-Z minus J and Z
+IMAGES_PER_CLASS = 50
+COUNTDOWN = 3
+DELAY_BETWEEN_CLASSES = 50  # milliseconds
 
 cap = cv2.VideoCapture(CAMERA_INDEX)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
