@@ -74,8 +74,8 @@ COLOR_BLACK_BG = (50, 50, 50)     # Gray background bars
 # ── Prediction Confidence Thresholds ──────────────────
 CONFIDENCE_HIGH = 0.8             # Threshold for green prediction UI
 CONFIDENCE_MEDIUM = 0.5           # Threshold for yellow prediction UI
-
 CONFIDENCE_THRESHOLD=0.70          # Minimum confidence to display prediction (70%)
+
 # ── Sentence Builder ──────────────────────────────────
 CONFIRM_DURATION = 1.5            # Seconds to wait before confirming a word
 
