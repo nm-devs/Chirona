@@ -29,34 +29,8 @@ FINGER_CIRCLE_RADIUS = 15     # Radius for fingertip circles
 # ── Display ───────────────────────────────────────────
 WINDOW_TITLE = "Hand Tracking"
 
-# ── Data Collection ───────────────────────────────────
-CLASSES = list("abcdefghiklmnopqrstuvwxy")  # A-Z minus J and Z
-IMAGES_PER_CLASS = 50
-COUNTDOWN = 3
-DELAY_BETWEEN_CLASSES = 50 # milliseconds
-
-# ── Model ─────────────────────────────────────────────
-NUM_CLASSES = len(CLASSES)
-DATA_DIR= "./data/raw"
-
-# ── ASL MNIST ─────────────────────────────────────────
-ASL_MNIST_DIR = "data/asl_mnist"
-
-# ── Augmentation Settings ─────────────────────────────
-AUGMENT_CONFIG = {
-    "flip": True,
-    "rotate": True,
-    "brightness": True,
-    "zoom": False,
-    "factor": 5
-}
-
-# ── Hyperparameter Tuning ─────────────────────────────
-RF_PARAM_GRID = {
-    "n_estimators": [50, 100, 200],
-    "max_depth": [None, 10, 20, 30],
-}
-CV_FOLDS = 5
+# ── Data ─────────────────────────────────────────────
+DATA_DIR = "./data/raw"
 
 # ── Prediction Smoothing ──────────────────────────────
 SMOOTHING_WINDOW_SIZE = 15       # Number of recent predictions to keep
@@ -74,12 +48,4 @@ COLOR_BLACK_BG = (50, 50, 50)     # Gray background bars
 # ── Prediction Confidence Thresholds ──────────────────
 CONFIDENCE_HIGH = 0.8             # Threshold for green prediction UI
 CONFIDENCE_MEDIUM = 0.5           # Threshold for yellow prediction UI
-CONFIDENCE_THRESHOLD=0.70          # Minimum confidence to display prediction (70%)
-
-# ── Sentence Builder ──────────────────────────────────
-CONFIRM_DURATION = 1.5            # Seconds to wait before confirming a word
-
-# ── Data Processing ───────────────────────────────────
-DEFAULT_PICKLE = "data/landmarks.pickle"
-EXPECTED_FEATURES = 42          # 21 landmarks × 2 (x, y)
-IMBALANCE_THRESHOLD = 0.5       # warn if any class has < 50% of the max count
+CONFIDENCE_THRESHOLD = 0.70       # Minimum confidence to display prediction (70%)

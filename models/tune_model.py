@@ -11,7 +11,13 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from utils.data_loader import load_landmark_data
-from config import BASE_DIR, RF_PARAM_GRID, CV_FOLDS
+from config import BASE_DIR
+
+RF_PARAM_GRID = {
+    "n_estimators": [50, 100, 200],
+    "max_depth": [None, 10, 20, 30],
+}
+CV_FOLDS = 5
 
 X_train, X_test, y_train, y_test, label_map = load_landmark_data()
 

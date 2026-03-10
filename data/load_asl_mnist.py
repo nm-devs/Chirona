@@ -19,10 +19,11 @@ import sys
 import csv
 import numpy as np
 
-from pathlib import Path
-from config import ASL_MNIST_DIR
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from pathlib import Path
+
+ASL_MNIST_DIR = "data/asl_mnist"
 
 # ── Label mapping ────────────────────────────────────────────────────────────
 

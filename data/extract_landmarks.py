@@ -12,6 +12,8 @@ import numpy as np
 import pickle 
 import logging
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from pathlib import Path
 from core.sign_classifier import SignClassifier
 from core.feature_extractor import FeatureExtractor
@@ -23,7 +25,6 @@ from config import (
     TRACKING_CONFIDENCE
 )
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def extract_landmarks_batch(

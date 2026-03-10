@@ -68,7 +68,7 @@ class ChironaApp:
             
         # Runtime state variables
         self.prev_time = 0
-        self.mode = "mouse"
+        self.mode = "sign_language"  # start in sign language mode
         self.max_hands_mode = 1 # start with single hand mode
         
         self.smoother = PredictionSmoother(
@@ -195,7 +195,6 @@ class ChironaApp:
         """Release resources."""
         self.cap.release()
         cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     app = ChironaApp()
