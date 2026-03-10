@@ -7,8 +7,8 @@ for left-click, right-click, and scrolling.
 import time
 import math
 import cv2
-import numpy as np
 import pyautogui
+import numpy as np
 
 from utils.drawing_utils import draw_hand_points, draw_hand_skeleton
 from config import (
@@ -50,6 +50,9 @@ class MouseController:
         # Scroll tracking state
         self.prev_y1 = 0
 
+        # Click-and-drag state
+        self.is_dragging = False
+
     def process_frame(self, frame, hand, detector):
         """Process one frame in mouse-control mode."""
         positions = hand["positions"]
@@ -68,6 +71,9 @@ class MouseController:
         x3, y3 = positions[12][1], positions[12][2]  # Middle Finger Tip
         x4, y4 = positions[16][1], positions[16][2]  # Ring Finger Tip
 
+        # Add this line right below the others!
+        anchor_x, anchor_y = positions[5][1], positions[5][2] # Index Finger Knuckle
+
         # Check scroll gesture (Thumb + Ring) first
         dist_scroll = math.hypot(x2 - x4, y2 - y4)
 
@@ -85,20 +91,30 @@ class MouseController:
 
         else:
             # NORMAL MOUSE MODE (Move + Click)
-            cv2.circle(frame, (x1, y1), FINGER_CIRCLE_RADIUS, COLOR_SECONDARY, cv2.FILLED)
+            cv2.circle(frame, (anchor_x, anchor_y), FINGER_CIRCLE_RADIUS, COLOR_SECONDARY, cv2.FILLED)
             cv2.circle(frame, (x2, y2), FINGER_CIRCLE_RADIUS, COLOR_SECONDARY, cv2.FILLED)
 
             # Move mouse
-            x_screen = np.interp(x1, (FRAME_REDUCTION, CAM_WIDTH - FRAME_REDUCTION), (0, self.screen_w))
-            y_screen = np.interp(y1, (FRAME_REDUCTION, CAM_HEIGHT - FRAME_REDUCTION), (0, self.screen_h))
+            x_screen = np.interp(anchor_x, (FRAME_REDUCTION, CAM_WIDTH - FRAME_REDUCTION), (0, self.screen_w))
+            y_screen = np.interp(anchor_y, (FRAME_REDUCTION, CAM_HEIGHT - FRAME_REDUCTION), (0, self.screen_h))
             self.move(x_screen, y_screen)
 
             # Left click (Thumb + Index)
             distance = math.hypot(x2 - x1, y2 - y1)
             if distance < PINCH_DISTANCE:
+                if not self.is_dragging:
+                    # We just started a pinch
+                    self.is_dragging = True
+                    pyautogui.mouseDown(button='left')
+                
+                # Keep drawing the circle while pinched
                 cv2.circle(frame, (x1, y1), FINGER_CIRCLE_RADIUS, COLOR_PRIMARY, cv2.FILLED)
-                self.click('left')
-                time.sleep(CLICK_COOLDOWN)
+            
+            else:
+                if self.is_dragging:
+                    # We just released a pinch
+                    self.is_dragging = False
+                    pyautogui.mouseUp(button='left')
 
             # Right click (Thumb + Middle)
             distance_right = math.hypot(x2 - x3, y2 - y3)
