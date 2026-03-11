@@ -16,12 +16,15 @@ import pickle
 import argparse
 import numpy as np
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from pathlib import Path
 from config import DATA_DIR
 from collections import Counter
-from config import DEFAULT_PICKLE, EXPECTED_FEATURES, IMBALANCE_THRESHOLD
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+DEFAULT_PICKLE = "data/landmarks.pickle"
+EXPECTED_FEATURES = 42          # 21 landmarks × 2 (x, y)
+IMBALANCE_THRESHOLD = 0.5       # warn if any class has < 50% of the max count
 
 # ── Core verification ────────────────────────────────────────────────────────
 

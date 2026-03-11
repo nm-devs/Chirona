@@ -7,11 +7,11 @@ import sys
 import os
 import numpy as np
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from dataclasses import dataclass
 from core.sign_classifier import SignClassifier
 from core.feature_extractor import FeatureExtractor
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Mock MediaPipe landmark objects (same as in feature_extractor.py)
 @dataclass

@@ -72,8 +72,9 @@ class ChironaApp:
         # Runtime state variables
         self.prev_time = 0
         self.mode = "mouse"
-        self.max_hands_mode = 2 # start with two hand mode
         self.prediction_history = deque(maxlen=5)  # For gesture vs sign distinction
+        self.max_hands_mode = 1 # start with single hand mode
+        
         self.smoother = PredictionSmoother(
             window_size=SMOOTHING_WINDOW_SIZE, 
             dominance_threshold=SMOOTHING_DOMINANCE_THRESHOLD
@@ -230,7 +231,6 @@ class ChironaApp:
         """Release resources."""
         self.cap.release()
         cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     app = ChironaApp()

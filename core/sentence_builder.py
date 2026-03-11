@@ -4,7 +4,7 @@ Accumulates individual recognized signs into words and sentences.
 Implements hold-to-confirm logic to prevent jitter and accidental typing.
 """
 
-from config import CONFIRM_DURATION
+CONFIRM_DURATION = 1.5  # Seconds to wait before confirming a word
 
 class SentenceBuilder:
     def __init__(self):

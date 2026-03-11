@@ -29,34 +29,8 @@ FINGER_CIRCLE_RADIUS = 15     # Radius for fingertip circles
 # ── Display ───────────────────────────────────────────
 WINDOW_TITLE = "Hand Tracking"
 
-# ── Data Collection ───────────────────────────────────
-CLASSES = list("abcdefghiklmnopqrstuvwxy")  # A-Z minus J and Z
-IMAGES_PER_CLASS = 50
-COUNTDOWN = 3
-DELAY_BETWEEN_CLASSES = 50 # milliseconds
-
-# ── Model ─────────────────────────────────────────────
-NUM_CLASSES = len(CLASSES)
-DATA_DIR= "./data/raw"
-
-# ── ASL MNIST ─────────────────────────────────────────
-ASL_MNIST_DIR = "data/asl_mnist"
-
-# ── Augmentation Settings ─────────────────────────────
-AUGMENT_CONFIG = {
-    "flip": True,
-    "rotate": True,
-    "brightness": True,
-    "zoom": False,
-    "factor": 5
-}
-
-# ── Hyperparameter Tuning ─────────────────────────────
-RF_PARAM_GRID = {
-    "n_estimators": [50, 100, 200],
-    "max_depth": [None, 10, 20, 30],
-}
-CV_FOLDS = 5
+# ── Data ─────────────────────────────────────────────
+DATA_DIR = "./data/raw"
 
 # ── Prediction Smoothing ──────────────────────────────
 SMOOTHING_WINDOW_SIZE = 15       # Number of recent predictions to keep
