@@ -4,6 +4,8 @@
 /data/augmented/
 /data/asl_mnist/*
 !/data/asl_mnist/.gitkeep
+/guides/*
+!/guides/.gitkeep
 __pycache__/
 models/saved/
 .env

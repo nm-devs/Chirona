@@ -214,6 +214,8 @@ def test_cooldown():
     hands = [{'landmarks': create_open_palm()}]
     
     # TEST 1: First gesture should be detected
+    # Requires 2 consecutive frames due to consistency filtering
+    detector.detect_gesture(hands)
     gesture1 = detector.detect_gesture(hands)
     assert gesture1 == 'space', f"First gesture should be 'space', got {gesture1}"
     
@@ -223,6 +225,8 @@ def test_cooldown():
     
     # TEST 3: Wait for cooldown to expire
     time.sleep(0.6)
+    # Requires 2 frames again because the buffer resets after successful detection
+    detector.detect_gesture(hands)
     gesture3 = detector.detect_gesture(hands)
     assert gesture3 == 'space', f"After cooldown, gesture should work, got {gesture3}"
 

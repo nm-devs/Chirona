@@ -18,6 +18,12 @@ WINDOW_TITLE = "Hand Tracking"
 
 # ── Data ─────────────────────────────────────────────
 DATA_DIR = "./data/raw"
+DYNAMIC_DATA_DIR = "./data/sequences"
+
+# ── Dynamic Signs ────────────────────────────────────
+DYNAMIC_CLASSES = ['hello', 'thank you', 'help', 'sorry', 'yes', 'no', 'please']
+SEQUENCE_LENGTH = 30
+SEQUENCES_PER_CLASS = 50
 
 # ── Prediction Smoothing ──────────────────────────────
 SMOOTHING_WINDOW_SIZE = 15       # Number of recent predictions to keep
@@ -48,4 +54,4 @@ IMBALANCE_THRESHOLD = 0.5       # warn if any class has < 50% of the max count
 CLICK_COOLDOWN = 0.5 # 500ms cooldown between clicks to prevent multiple triggers from one gesture
 SPREAD_THRESHOLD = 30 # Minimum normalized distance between thumb and pinky for "spread" gesture
 CURL_THRESHOLD = 40 # Threshold for determining if fingers are curled (0 to 1)
-THUMBS_THRESHOLD = 80 # Threshold for determining if thumb is up (0
+THUMBS_THRESHOLD = 80 # Threshold for determining if thumb is up

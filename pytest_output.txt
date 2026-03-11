@@ -1,0 +1,12 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\thebe\Gtihub Repos\chirona
+plugins: anyio-4.12.1
+collected 23 items
+
+tests\test_feature_extractor.py .....                                    [ 21%]
+tests\test_gesture_detector.py .....                                     [ 43%]
+tests\test_prediction_smoother.py ........                               [ 78%]
+tests\test_sentence_builder.py .....                                     [100%]
+
+============================= 23 passed in 5.03s ==============================
