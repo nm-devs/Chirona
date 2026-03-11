@@ -1,0 +1,942 @@
+================================================================================
+PYTTSX3 IMPLEMENTATION - COMPLETE CODE FOR ALL FILES
+================================================================================
+
+This document contains the complete, production-ready code for all files needed
+to implement the pyttsx3 text-to-speech integration according to the guide.
+
+================================================================================
+FILE 1: utils/text_to_speech.py
+================================================================================
+
+"""
+Text-to-Speech Module using pyttsx3
+
+Provides a thread-safe, non-blocking text-to-speech system for the application.
+Allows offline speech synthesis with configurable speech rate and volume.
+"""
+
+import pyttsx3
+import queue
+import threading
+import logging
+from typing import Optional
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+class TextToSpeech:
+    """
+    A thread-safe wrapper around pyttsx3 for non-blocking text-to-speech.
+    
+    Features:
+    - Non-blocking speech via background worker thread
+    - Configurable speech rate (default 150 wpm) and volume (0-1)
+    - Graceful fallback if TTS engine is unavailable
+    - Thread-safe queue for managing speech requests
+    - Clean shutdown and resource management
+    """
+    
+    def __init__(self, rate: int = 150, volume: float = 0.9):
+        """
+        Initialize the TextToSpeech engine.
+        
+        Args:
+            rate (int): Words per minute for speech (default 150)
+            volume (float): Volume level 0-1 (default 0.9)
+        """
+        self.rate = rate
+        self.volume = volume
+        self.engine = None
+        self.is_available = False
+        self.speech_queue = queue.Queue(maxsize=50)  # Prevent unlimited growth
+        self.should_stop = False
+        self.worker_thread = None
+        self.lock = threading.Lock()
+        
+        self._initialize_engine()
+        
+    def _initialize_engine(self):
+        """Initialize the pyttsx3 engine with error handling."""
+        try:
+            self.engine = pyttsx3.init()
+            self.engine.setProperty('rate', self.rate)
+            self.engine.setProperty('volume', self.volume)
+            
+            # Try to set a preferred voice (female if available)
+            voices = self.engine.getProperty('voices')
+            if len(voices) > 1:
+                # Prefer female voice (usually index 1)
+                self.engine.setProperty('voice', voices[1].id)
+            elif len(voices) > 0:
+                self.engine.setProperty('voice', voices[0].id)
+            
+            self.is_available = True
+            logger.info(f"TTS Engine initialized successfully. "
+                       f"Rate: {self.rate} wpm, Volume: {self.volume}")
+            
+            # Start worker thread
+            self.should_stop = False
+            self.worker_thread = threading.Thread(
+                target=self._process_speech_queue,
+                daemon=True
+            )
+            self.worker_thread.start()
+            logger.info("TTS worker thread started")
+            
+        except Exception as e:
+            self.is_available = False
+            logger.warning(f"TTS engine initialization failed: {e}. "
+                          f"Speech will be disabled.")
+    
+    def speak(self, text: str) -> bool:
+        """
+        Queue text for speech synthesis (non-blocking).
+        
+        Args:
+            text (str): Text to speak
+            
+        Returns:
+            bool: True if queued successfully, False if engine unavailable
+        """
+        if not text or not self.is_available:
+            return False
+        
+        try:
+            # Don't block on queue.put() to maintain responsiveness
+            self.speech_queue.put_nowait(text)
+            logger.debug(f"Queued for speech: '{text}'")
+            return True
+        except queue.Full:
+            logger.warning("Speech queue is full. Dropping speech request.")
+            return False
+    
+    def _process_speech_queue(self):
+        """Background worker thread that processes queued speech requests."""
+        logger.debug("Speech worker thread started")
+        
+        while not self.should_stop:
+            try:
+                # Wait for a speech request with timeout to check should_stop flag
+                text = self.speech_queue.get(timeout=0.5)
+                
+                if text and self.engine:
+                    try:
+                        with self.lock:
+                            self.engine.say(text)
+                            self.engine.runAndWait()
+                        logger.debug(f"Speech completed: '{text}'")
+                    except Exception as e:
+                        logger.error(f"Error during speech synthesis: {e}")
+                
+                self.speech_queue.task_done()
+                
+            except queue.Empty:
+                # Timeout - continue checking should_stop flag
+                continue
+            except Exception as e:
+                logger.error(f"Error in speech worker thread: {e}")
+        
+        logger.debug("Speech worker thread stopped")
+    
+    def set_speech_rate(self, rate: int):
+        """
+        Set the speech rate in words per minute.
+        
+        Args:
+            rate (int): Words per minute (typically 50-300)
+        """
+        self.rate = max(50, min(300, rate))  # Clamp to reasonable range
+        if self.engine and self.is_available:
+            with self.lock:
+                self.engine.setProperty('rate', self.rate)
+            logger.info(f"Speech rate set to {self.rate} wpm")
+    
+    def set_volume(self, volume: float):
+        """
+        Set the speech volume level.
+        
+        Args:
+            volume (float): Volume level 0-1
+        """
+        self.volume = max(0.0, min(1.0, volume))  # Clamp to 0-1
+        if self.engine and self.is_available:
+            with self.lock:
+                self.engine.setProperty('volume', self.volume)
+            logger.info(f"Volume set to {self.volume}")
+    
+    def get_available_voices(self):
+        """
+        Get list of available voices on the system.
+        
+        Returns:
+            list: List of voice objects with id and name properties
+        """
+        if self.engine and self.is_available:
+            try:
+                return self.engine.getProperty('voices')
+            except Exception as e:
+                logger.error(f"Error getting voices: {e}")
+        return []
+    
+    def set_voice(self, voice_id: str):
+        """
+        Set the voice to use for speech synthesis.
+        
+        Args:
+            voice_id (str): ID of the voice to use
+        """
+        if self.engine and self.is_available:
+            try:
+                with self.lock:
+                    self.engine.setProperty('voice', voice_id)
+                logger.info(f"Voice set to {voice_id}")
+            except Exception as e:
+                logger.error(f"Error setting voice: {e}")
+    
+    def clear_queue(self):
+        """Clear all pending speech requests from the queue."""
+        while not self.speech_queue.empty():
+            try:
+                self.speech_queue.get_nowait()
+            except queue.Empty:
+                break
+        logger.info("Speech queue cleared")
+    
+    def shutdown(self):
+        """Cleanly shutdown the TTS engine and worker thread."""
+        logger.info("Shutting down TTS engine...")
+        
+        self.should_stop = True
+        
+        # Wait for worker thread to finish
+        if self.worker_thread and self.worker_thread.is_alive():
+            self.worker_thread.join(timeout=2.0)
+            if self.worker_thread.is_alive():
+                logger.warning("Worker thread did not stop gracefully")
+        
+        # Cleanup engine
+        if self.engine:
+            try:
+                self.engine.stop()
+            except Exception as e:
+                logger.warning(f"Error stopping engine: {e}")
+            self.engine = None
+        
+        self.is_available = False
+        logger.info("TTS engine shutdown complete")
+    
+    def __del__(self):
+        """Ensure cleanup on object destruction."""
+        self.shutdown()
+
+
+================================================================================
+FILE 2: config.py (UPDATED/APPENDED SECTION)
+================================================================================
+
+[Add the following to the end of your existing config.py]
+
+# ── Text-to-Speech (pyttsx3) ──────────────────────
+TTS_ENABLED = True                    # Enable/disable TTS system
+TTS_SPEECH_RATE = 150                 # Words per minute (default 150)
+TTS_VOLUME = 0.9                      # Volume level 0-1 (default 0.9)
+TTS_SPEAK_LETTERS = True             # Speak each letter as confirmed (optional)
+TTS_SPEAK_WORDS = True               # Speak each word when confirmed
+TTS_SPEAK_SENTENCES = True           # Speak full sentence when triggered
+TTS_FALLBACK_SILENT = True           # Silent fallback if TTS unavailable
+TTS_QUEUE_MAX_SIZE = 50              # Max queued speech requests
+
+
+================================================================================
+FILE 3: requirements.txt (UPDATED)
+================================================================================
+
+# Core (already have)
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+pyautogui
+
+# Machine Learning
+scikit-learn>=1.3.0
+
+# Deep Learning (install when reaching Phase 6)
+tensorflow>=2.13.0
+
+# Text-to-Speech 
+pyttsx3>=2.90.0
+pyaudio>=0.2.11
+comtypes>=1.1.0
+
+# Web App (install only if building web version)
+flask>=3.0.0
+# OR
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Desktop GUI (install only if building desktop app)
+PyQt5>=5.15.0
+
+
+================================================================================
+FILE 4: controllers/sign_language_controller.py (UPDATED)
+================================================================================
+
+"""
+Controller for processing visual feedback in sign language translation mode.
+
+Handles the rendering of hand tracking points and skeletons on the camera feed
+when the user is spelling out signs. Includes text-to-speech functionality for
+spoken feedback of recognized signs.
+"""
+
+import cv2
+import logging
+from utils.text_to_speech import TextToSpeech
+from utils.drawing_utils import draw_hand_points, draw_hand_skeleton
+from config import TTS_ENABLED, TTS_SPEAK_LETTERS, TTS_SPEAK_WORDS
+
+logger = logging.getLogger(__name__)
+
+
+class SignLanguageController:
+    """
+    Controller for sign language recognition mode.
+    
+    Manages visual feedback and text-to-speech for recognized signs and words.
+    """
+    
+    def __init__(self, tts: TextToSpeech = None):
+        """
+        Initialize the sign language controller.
+        
+        Args:
+            tts (TextToSpeech): Optional TextToSpeech instance. 
+                               If None, creates a new one.
+        """
+        if tts:
+            self.tts = tts
+        else:
+            self.tts = TextToSpeech() if TTS_ENABLED else None
+        
+        self.last_spoken_sign = None
+        self.last_spoken_word = None
+        logger.info("SignLanguageController initialized")
+
+    def process_frame(self, frame, hand, detector):
+        """
+        Process one frame in sign-language mode.
+        
+        Args:
+            frame: OpenCV image frame
+            hand: Hand data dictionary with positions and landmarks
+            detector: HandDetector instance
+        """
+        positions = hand["positions"]
+        hand_landmarks = hand["landmarks"]
+
+        # Draw visuals
+        draw_hand_points(frame, positions)
+        draw_hand_skeleton(frame, hand_landmarks, detector.mp_hands, detector.mp_drawing)
+
+        # Placeholder text
+        cv2.putText(
+            frame,
+            "Sign Language Mode - Ready",
+            (10, 60),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2,
+        )
+
+    def speak_sign(self, sign: str):
+        """
+        Speak a recognized sign using TTS.
+        
+        Args:
+            sign (str): The sign/letter to speak
+        """
+        if not sign or not self.tts or not TTS_ENABLED:
+            return
+        
+        # Avoid repeated speech of the same sign
+        if sign == self.last_spoken_sign and TTS_SPEAK_LETTERS:
+            return
+        
+        if TTS_SPEAK_LETTERS:
+            self.tts.speak(sign)
+            self.last_spoken_sign = sign
+            logger.debug(f"Speaking sign: {sign}")
+
+    def speak_word(self, word: str):
+        """
+        Speak a confirmed word using TTS.
+        
+        Args:
+            word (str): The word to speak
+        """
+        if not word or not self.tts or not TTS_ENABLED:
+            return
+        
+        # Avoid repeated speech of the same word
+        if word == self.last_spoken_word and TTS_SPEAK_WORDS:
+            return
+        
+        if TTS_SPEAK_WORDS:
+            self.tts.speak(word)
+            self.last_spoken_word = word
+            logger.info(f"Speaking word: {word}")
+
+    def speak_sentence(self, sentence: str):
+        """
+        Speak a complete sentence using TTS.
+        Triggered by thumbs-up gesture or manual trigger.
+        
+        Args:
+            sentence (str): The sentence to speak
+        """
+        if not sentence or not self.tts or not TTS_ENABLED:
+            return
+        
+        self.tts.speak(sentence)
+        logger.info(f"Speaking sentence: {sentence}")
+
+    def handle_thumbs_up_gesture(self, current_sentence: str):
+        """
+        Handle the thumbs-up gesture to trigger speech.
+        
+        Args:
+            current_sentence (str): The sentence to speak
+        """
+        if current_sentence:
+            self.speak_sentence(current_sentence)
+            logger.info("Thumbs-up gesture: speaking sentence")
+
+    def clear_speech_memory(self):
+        """Clear the memory of spoken items to allow re-speaking."""
+        self.last_spoken_sign = None
+        self.last_spoken_word = None
+
+    def shutdown(self):
+        """Shutdown the TTS engine."""
+        if self.tts:
+            self.tts.shutdown()
+            logger.info("SignLanguageController shutdown")
+
+
+================================================================================
+FILE 5: main.py (UPDATED SECTIONS)
+================================================================================
+
+[Update the imports section at the top of main.py to include:]
+
+from utils.text_to_speech import TextToSpeech
+
+[Update the config imports to add:]
+
+from config import (
+    CAMERA_INDEX, CAM_WIDTH, CAM_HEIGHT,
+    MAX_HANDS, DETECTION_CONFIDENCE, TRACKING_CONFIDENCE,
+    SMOOTHING_ALPHA, WINDOW_TITLE, CONFIDENCE_THRESHOLD,
+    SMOOTHING_WINDOW_SIZE, SMOOTHING_DOMINANCE_THRESHOLD,
+    COLOR_PRIMARY, TTS_ENABLED, TTS_SPEECH_RATE, TTS_VOLUME
+)
+
+[In the ChironaApp._setup() method, update the section where controllers are initialized:]
+
+    def _setup(self):
+        """Initialize models, controllers, and hardware."""
+        
+        # Initialize Text-to-Speech (if enabled)
+        self.tts = None
+        if TTS_ENABLED:
+            try:
+                self.tts = TextToSpeech(rate=TTS_SPEECH_RATE, volume=TTS_VOLUME)
+                logging.info("Text-to-Speech system initialized")
+            except Exception as e:
+                logging.error(f"Failed to initialize TTS: {e}")
+                self.tts = None
+        
+        self.controllers = {
+            "mouse": MouseController(alpha=SMOOTHING_ALPHA),
+            "sign_language": SignLanguageController(tts=self.tts),
+        }
+        
+        # ... rest of _setup() method remains the same ...
+
+[In the ChironaApp.cleanup() method, add TTS shutdown:]
+
+    def cleanup(self):
+        """Release resources."""
+        # Shutdown TTS
+        if self.tts:
+            self.tts.shutdown()
+        
+        self.cap.release()
+        cv2.destroyAllWindows()
+
+[In the ChironaApp._handle_keypress() method, add support for "speak" gesture:]
+
+    def _handle_keypress(self):
+        """Handle keyboard input. Returns False if app should exit."""
+        key = cv2.waitKey(1) & 0xFF
+        
+        # Toggle control modes 
+        if key == ord('m'):
+            self.mode = "sign_language" if self.mode == "mouse" else "mouse"
+            self.sentence_builder.clear()
+            
+        # Manually add space with spacebar when in sign language mode
+        if key == ord(' ') and self.mode == "sign_language":
+            self.sentence_builder.add_space()
+        
+        # Trigger speech with 's' key (in addition to thumbs-up gesture)
+        if key == ord('s') and self.mode == "sign_language":
+            sentence = self.sentence_builder.get_current_sentence()
+            if sentence and self.controllers["sign_language"].tts:
+                self.controllers["sign_language"].speak_sentence(sentence)
+                logging.info(f"Speech triggered: {sentence}")
+            
+        if key == ord('h'):
+            # toggle between 1 and 2 hand modes
+            self.max_hands_mode = 2 if self.max_hands_mode == 1 else 1
+            self.detector.hands.max_num_hands = self.max_hands_mode
+            print(f'Hand detection mode: {self.max_hands_mode} hand(s)')
+            
+        # Exit on Escape key or window close
+        if key == 27 or cv2.getWindowProperty(WINDOW_TITLE, cv2.WND_PROP_VISIBLE) < 1:
+            return False
+            
+        return True
+
+
+================================================================================
+FILE 6: tests/test_text_to_speech.py (NEW FILE)
+================================================================================
+
+"""
+Unit tests for the TextToSpeech module.
+
+Tests basic functionality, threading, error handling, and graceful fallback.
+"""
+
+import unittest
+import time
+import logging
+from unittest.mock import Mock, patch, MagicMock
+from utils.text_to_speech import TextToSpeech
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+class TestTextToSpeechInitialization(unittest.TestCase):
+    """Test TextToSpeech initialization."""
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        # Intentionally left empty; shutdown happens in each test
+        pass
+    
+    def test_initialization_success(self):
+        """Test successful initialization with default parameters."""
+        tts = TextToSpeech()
+        try:
+            self.assertIsNotNone(tts.engine)
+            self.assertEqual(tts.rate, 150)
+            self.assertEqual(tts.volume, 0.9)
+            self.assertTrue(tts.is_available)
+        finally:
+            tts.shutdown()
+    
+    def test_initialization_custom_parameters(self):
+        """Test initialization with custom rate and volume."""
+        tts = TextToSpeech(rate=200, volume=0.5)
+        try:
+            self.assertEqual(tts.rate, 200)
+            self.assertEqual(tts.volume, 0.5)
+        finally:
+            tts.shutdown()
+    
+    def test_worker_thread_starts(self):
+        """Test that worker thread starts successfully."""
+        tts = TextToSpeech()
+        try:
+            self.assertTrue(tts.worker_thread.is_alive())
+        finally:
+            tts.shutdown()
+
+
+class TestTextToSpeechBasicFunctionality(unittest.TestCase):
+    """Test basic TextToSpeech functionality."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.tts = TextToSpeech()
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        self.tts.shutdown()
+    
+    def test_speak_with_valid_text(self):
+        """Test speak() with valid text."""
+        result = self.tts.speak("Hello world")
+        self.assertTrue(result)
+    
+    def test_speak_with_empty_string(self):
+        """Test speak() with empty string (should return False)."""
+        result = self.tts.speak("")
+        self.assertFalse(result)
+    
+    def test_speak_with_none(self):
+        """Test speak() with None (should return False)."""
+        result = self.tts.speak(None)
+        self.assertFalse(result)
+    
+    def test_speak_non_blocking(self):
+        """Test that speak() returns immediately (non-blocking)."""
+        start_time = time.time()
+        self.tts.speak("This is a test sentence that might take a while to speak")
+        elapsed = time.time() - start_time
+        
+        # speak() should return in < 0.1 seconds (non-blocking)
+        self.assertLess(elapsed, 0.1)
+
+
+class TestTextToSpeechConfiguration(unittest.TestCase):
+    """Test TextToSpeech configuration methods."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.tts = TextToSpeech()
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        self.tts.shutdown()
+    
+    def test_set_speech_rate(self):
+        """Test setting speech rate."""
+        self.tts.set_speech_rate(200)
+        self.assertEqual(self.tts.rate, 200)
+    
+    def test_set_speech_rate_clamping(self):
+        """Test that speech rate is clamped to reasonable range."""
+        self.tts.set_speech_rate(999)  # Too high
+        self.assertLessEqual(self.tts.rate, 300)
+        
+        self.tts.set_speech_rate(-50)  # Too low
+        self.assertGreaterEqual(self.tts.rate, 50)
+    
+    def test_set_volume(self):
+        """Test setting volume."""
+        self.tts.set_volume(0.5)
+        self.assertEqual(self.tts.volume, 0.5)
+    
+    def test_set_volume_clamping(self):
+        """Test that volume is clamped to 0-1 range."""
+        self.tts.set_volume(1.5)
+        self.assertLessEqual(self.tts.volume, 1.0)
+        
+        self.tts.set_volume(-0.5)
+        self.assertGreaterEqual(self.tts.volume, 0.0)
+    
+    def test_get_available_voices(self):
+        """Test getting available voices."""
+        voices = self.tts.get_available_voices()
+        self.assertIsInstance(voices, list)
+
+
+class TestTextToSpeechQueueManagement(unittest.TestCase):
+    """Test TextToSpeech queue management."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.tts = TextToSpeech()
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        self.tts.shutdown()
+    
+    def test_clear_queue(self):
+        """Test clearing the speech queue."""
+        # Add items to queue
+        self.tts.speak("Item 1")
+        self.tts.speak("Item 2")
+        self.tts.speak("Item 3")
+        
+        # Clear queue
+        self.tts.clear_queue()
+        
+        # Queue should be empty
+        self.assertTrue(self.tts.speech_queue.empty())
+    
+    def test_queue_size_limit(self):
+        """Test that queue respects maximum size."""
+        # Fill queue to max
+        for i in range(50):
+            self.tts.speak(f"Item {i}")
+        
+        # Try adding one more (should fail)
+        result = self.tts.speak("Extra item")
+        self.assertFalse(result)
+
+
+class TestTextToSpeechShutdown(unittest.TestCase):
+    """Test TextToSpeech shutdown and cleanup."""
+    
+    def test_shutdown_stops_worker_thread(self):
+        """Test that shutdown stops the worker thread."""
+        tts = TextToSpeech()
+        worker = tts.worker_thread
+        
+        self.assertTrue(worker.is_alive())
+        tts.shutdown()
+        
+        # Give thread a moment to stop
+        worker.join(timeout=1.0)
+        self.assertFalse(worker.is_alive())
+    
+    def test_shutdown_marks_unavailable(self):
+        """Test that shutdown marks TTS as unavailable."""
+        tts = TextToSpeech()
+        self.assertTrue(tts.is_available)
+        
+        tts.shutdown()
+        self.assertFalse(tts.is_available)
+
+
+class TestTextToSpeechErrorHandling(unittest.TestCase):
+    """Test TextToSpeech error handling and graceful fallback."""
+    
+    @patch('utils.text_to_speech.pyttsx3.init')
+    def test_graceful_fallback_on_init_failure(self, mock_init):
+        """Test graceful fallback if engine initialization fails."""
+        mock_init.side_effect = Exception("Engine error")
+        
+        tts = TextToSpeech()
+        
+        # Should not crash, but mark as unavailable
+        self.assertFalse(tts.is_available)
+        self.assertIsNone(tts.engine)
+        
+        # speak() should return False gracefully
+        result = tts.speak("Test")
+        self.assertFalse(result)
+    
+    def test_speak_when_unavailable(self):
+        """Test speak() behavior when TTS is unavailable."""
+        tts = TextToSpeech()
+        tts.is_available = False
+        
+        result = tts.speak("Test")
+        self.assertFalse(result)
+        
+        tts.shutdown()
+
+
+class TestTextToSpeechThreadSafety(unittest.TestCase):
+    """Test thread-safety of TextToSpeech operations."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.tts = TextToSpeech()
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        self.tts.shutdown()
+    
+    def test_concurrent_speak_calls(self):
+        """Test multiple concurrent calls to speak()."""
+        import threading
+        
+        results = []
+        
+        def call_speak(text):
+            result = self.tts.speak(text)
+            results.append(result)
+        
+        threads = [
+            threading.Thread(target=call_speak, args=(f"Text {i}",))
+            for i in range(10)
+        ]
+        
+        for thread in threads:
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+        
+        # All calls should succeed (or fail gracefully without crashing)
+        self.assertEqual(len(results), 10)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+================================================================================
+FILE 7: Example Usage in Gesture Detection (OPTIONAL INTEGRATION)
+================================================================================
+
+[If you want to integrate TTS with gesture/sign recognition, add this to
+your sign classifier or sentence builder callback:]
+
+# In core/sentence_builder.py or similar:
+
+from controllers.sign_language_controller import SignLanguageController
+
+class SentenceBuilder:
+    def __init__(self, sign_controller: SignLanguageController = None):
+        self.sign_controller = sign_controller
+        # ... rest of initialization ...
+    
+    def add_sign(self, sign: str):
+        """Add a sign and optionally speak it."""
+        self.current_word += sign
+        
+        # Speak the letter if TTS is enabled
+        if self.sign_controller:
+            self.sign_controller.speak_sign(sign)
+    
+    def confirm_word(self):
+        """Confirm word and speak it."""
+        if self.current_word:
+            self.words.append(self.current_word)
+            
+            # Speak the confirmed word if TTS is enabled
+            if self.sign_controller:
+                self.sign_controller.speak_word(self.current_word)
+            
+            self.current_word = ""
+
+
+================================================================================
+FILE 8: Platform-Specific Setup Notes (REFERENCE)
+================================================================================
+
+WINDOWS SETUP:
+--------------
+pyttsx3 uses Windows SAPI 5, which is built-in.
+No additional setup required. Just install pyttsx3.
+
+Commands:
+    pip install pyttsx3
+
+MacOS SETUP:
+-----------
+pyttsx3 uses NSSpeechSynthesizer, which is built-in.
+No additional setup required.
+
+Commands:
+    pip install pyttsx3
+
+LINUX SETUP:
+-----------
+pyttsx3 requires espeak or festival backend.
+
+Commands:
+    # For espeak:
+    sudo apt-get install espeak
+    pip install pyttsx3
+    
+    # OR for festival:
+    sudo apt-get install festival
+    pip install pyttsx3
+    
+    # Optional: For better voice support
+    sudo apt-get install espeak-data
+
+
+================================================================================
+INSTALLATION AND VERIFICATION STEPS
+================================================================================
+
+1. Install dependencies:
+   pip install -r requirements.txt
+
+2. Create the utils/text_to_speech.py file with the code provided above
+
+3. Update config.py with the TTS settings section
+
+4. Update main.py according to the sections marked above
+
+5. Update controllers/sign_language_controller.py
+
+6. Run tests to verify installation:
+   python -m pytest tests/test_text_to_speech.py -v
+
+7. Test manually:
+   python -c "from utils.text_to_speech import TextToSpeech; tts = TextToSpeech(); tts.speak('Hello world'); import time; time.sleep(2); tts.shutdown()"
+
+8. Run the main application:
+   python main.py
+
+
+================================================================================
+KEY IMPLEMENTATION DETAILS
+================================================================================
+
+1. NON-BLOCKING SPEECH:
+   - All speak() calls return immediately
+   - Background worker thread handles actual TTS
+   - Speech queue manages pending requests
+
+2. THREAD SAFETY:
+   - Uses threading.Lock for engine operations
+   - Queue is thread-safe by design
+   - Proper shutdown sequence to avoid race conditions
+
+3. ERROR HANDLING:
+   - Graceful fallback if TTS unavailable
+   - All exceptions caught and logged
+   - Application continues even if TTS fails
+
+4. CONFIGURATION:
+   - All settings in config.py
+   - Easy to enable/disable TTS
+   - Configurable speech rate and volume
+
+5. RESOURCE MANAGEMENT:
+   - Worker thread is daemon thread
+   - Proper cleanup in shutdown()
+   - No resource leaks
+
+6. QUEUE MANAGEMENT:
+   - Maximum queue size prevents memory issues
+   - clear_queue() for emergency resets
+   - put_nowait() to prevent blocking
+
+
+================================================================================
+TROUBLESHOOTING REFERENCE
+================================================================================
+
+If speech is not working:
+
+1. Verify pyttsx3 is installed:
+   pip list | grep pyttsx3
+
+2. Test TTS directly:
+   python -c "import pyttsx3; e = pyttsx3.init(); e.say('test'); e.runAndWait()"
+
+3. Check logs for errors:
+   - Look for initialization failures
+   - Check for queue overflow warnings
+
+4. Verify audio system:
+   - Check system volume
+   - Check speaker connections
+   - Test system audio with other apps
+
+5. Check TTS_ENABLED in config.py is True
+
+6. Verify threading is working:
+   - Check worker thread is alive in logs
+   - Look for thread join timeouts
+
+
+================================================================================
+END OF IMPLEMENTATION CODE
+================================================================================

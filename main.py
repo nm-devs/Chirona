@@ -12,6 +12,7 @@ import sys
 import logging
 import numpy as np
 
+from utils.text_to_speech import TextToSpeech
 from xml.parsers.expat import model
 from core.sign_classifier import SignClassifier
 from core.hand_detector import HandDetector
@@ -26,7 +27,7 @@ from config import (
     MAX_HANDS, DETECTION_CONFIDENCE, TRACKING_CONFIDENCE,
     SMOOTHING_ALPHA, WINDOW_TITLE, CONFIDENCE_THRESHOLD,
     SMOOTHING_WINDOW_SIZE, SMOOTHING_DOMINANCE_THRESHOLD,
-    COLOR_PRIMARY
+    COLOR_PRIMARY, TTS_ENABLED, TTS_SPEECH_RATE, TTS_VOLUME
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +42,20 @@ class ChironaApp:
             "mouse": MouseController(alpha=SMOOTHING_ALPHA),
             "sign_language": SignLanguageController(),
         }
-        
+        # initialize text to speech
+        self.tts= None
+        if TTS_ENABLED:
+            try:
+                self.tts = TextToSpeech(rate=TTS_SPEECH_RATE, volume=TTS_VOLUME)
+                logging.info("Text-to-speech system initialized successfully.")
+            except Exception as e:
+                logging.error(f"Failed to initialize text-to-speech system: {e} "
+                              "Text-to-speech functionality will be disabled.")
+                self.tts = None
+        self.controllers = {
+            "mouse": MouseController(alpha=SMOOTHING_ALPHA),
+            "sign_language": SignLanguageController(tts=self.tts),
+        }
         # Initialize hand detector (start in single hand mode)
         self.detector = HandDetector(1, DETECTION_CONFIDENCE, TRACKING_CONFIDENCE)
         self.fe = FeatureExtractor(use_z=False)  # Must match training config
@@ -119,6 +133,12 @@ class ChironaApp:
         # Manually add space with spacebar when in sign language mode
         if key == ord(' ') and self.mode == "sign_language":
             self.sentence_builder.add_space()
+        # trigger speech with 's' key ( in addition to thumbs up gesture)
+        if key == ord('s') and self.mode == "sign_language":
+            sentence = self.sentence_builder.get_current_sentence()
+            if sentence and self.controllers['sign_language'].tss:
+                self.controllers['sign_language'].speak_sentence(sentence)
+                logging.info("Manual trigger - spoken sentence: " + sentence)
             
         if key == ord('h'):
             #toggle between 1 and 2 hand modes
@@ -193,6 +213,9 @@ class ChironaApp:
 
     def cleanup(self):
         """Release resources."""
+        #shutdown text to speech system
+        if self.tts:
+            self.tts.shutdown()
         self.cap.release()
         cv2.destroyAllWindows()
 

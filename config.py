@@ -83,3 +83,13 @@ CONFIRM_DURATION = 1.5            # Seconds to wait before confirming a word
 DEFAULT_PICKLE = "data/landmarks.pickle"
 EXPECTED_FEATURES = 42          # 21 landmarks × 2 (x, y)
 IMBALANCE_THRESHOLD = 0.5       # warn if any class has < 50% of the max count
+
+# ── Text-to-Speech (pyttsx3) ──────────────────────
+TTS_ENABLED = True                    # Enable/disable TTS system
+TTS_SPEECH_RATE = 150                 # Words per minute (default 150)
+TTS_VOLUME = 0.9                      # Volume level 0-1 (default 0.9)
+TTS_SPEAK_LETTERS = True             # Speak each letter as confirmed (optional)
+TTS_SPEAK_WORDS = True               # Speak each word when confirmed
+TTS_SPEAK_SENTENCES = True           # Speak full sentence when triggered
+TTS_FALLBACK_SILENT = True           # Silent fallback if TTS unavailable
+TTS_QUEUE_MAX_SIZE = 50              # Max queued speech requests

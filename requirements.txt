@@ -21,3 +21,7 @@ uvicorn>=0.23.0
 
 # Desktop GUI (install only if building desktop app)
 PyQt5>=5.15.0
+
+pyttsx3>=2.90.0
+pyaudio>=0.2.11
+comtypes>=1.1.0
