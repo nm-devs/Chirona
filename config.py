@@ -49,3 +49,13 @@ CLICK_COOLDOWN = 0.5 # 500ms cooldown between clicks to prevent multiple trigger
 SPREAD_THRESHOLD = 30 # Minimum normalized distance between thumb and pinky for "spread" gesture
 CURL_THRESHOLD = 40 # Threshold for determining if fingers are curled (0 to 1)
 THUMBS_THRESHOLD = 80 # Threshold for determining if thumb is up (0
+
+# ── Text-to-Speech (pyttsx3) ──────────────────────
+TTS_ENABLED = True                    # Enable/disable TTS system
+TTS_SPEECH_RATE = 150                 # Words per minute (default 150)
+TTS_VOLUME = 0.9                      # Volume level 0-1 (default 0.9)
+TTS_SPEAK_LETTERS = True             # Speak each letter as confirmed (optional)
+TTS_SPEAK_WORDS = True               # Speak each word when confirmed
+TTS_SPEAK_SENTENCES = True           # Speak full sentence when triggered
+TTS_FALLBACK_SILENT = True           # Silent fallback if TTS unavailable
+TTS_QUEUE_MAX_SIZE = 50              # Max queued speech requests

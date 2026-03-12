@@ -40,3 +40,20 @@ def draw_sentence_display(frame, sentence, position=(10, 400)):
     cv2.putText(frame, sentence, (x, y + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     
     return frame
+
+
+def draw_speaking_feedback(frame, is_speaking, position=(50, 120)):
+    """Draw 'SPEAKING...' feedback while TTS is actively synthesizing."""
+    if not is_speaking:
+        return frame
+    
+    x, y = position
+    
+    # Draw background rectangle for visibility
+    cv2.rectangle(frame, (x - 5, y - 25), (x + 250, y + 10), (0, 100, 0), -1)
+    
+    # Draw "SPEAKING..." text in bright green
+    cv2.putText(frame, 'SPEAKING...', (x, y), 
+                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+    
+    return frame

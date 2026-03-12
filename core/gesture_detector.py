@@ -1,11 +1,16 @@
 import numpy as np
 import mediapipe as mp
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GestureDetector:
     def __init__(self):
         self.last_gesture_time = {}  # Cooldown tracking for each gesture
-        self.cooldown_seconds = 0.5  # 500ms cooldown between gestures
+        # Different cooldowns for different gestures
+        self.cooldown_seconds = 0.5  # Default cooldown for space, backspace, clear
+        self.speak_cooldown_seconds = 0.2  # Shorter cooldown for speak gesture (200ms)
         self.landmark_threshold_spread = 0.16  # normalized distance for spread (open palm) - MUST be open
         self.landmark_threshold_curl = 0.18  # normalized distance for curl (fist) - tighter
         self.landmark_threshold_thumbs = 0.25  # normalized vertical distance for thumbs up
@@ -103,14 +108,21 @@ class GestureDetector:
     def detect_gesture(self, hands_data):
         '''Detect which gesture is being made with frame-based smoothing.'''
         current_time = time.time()
-
-        # Check cooldown
-        for gesture, last_time in self.last_gesture_time.items():
-            if current_time - last_time < self.cooldown_seconds:
-                return None  # Still in cooldown, ignore gesture
         
         # Get raw gesture detection
         raw_gesture = self._detect_raw_gesture(hands_data)
+        
+        if raw_gesture:
+            logger.debug(f"Raw gesture detected: {raw_gesture}")
+        
+        # Use different cooldown depending on gesture type
+        cooldown = self.speak_cooldown_seconds if raw_gesture == 'speak' else self.cooldown_seconds
+        
+        # Check cooldown for THIS specific gesture only
+        if raw_gesture and raw_gesture in self.last_gesture_time:
+            if current_time - self.last_gesture_time[raw_gesture] < cooldown:
+                logger.debug(f"Gesture {raw_gesture} in cooldown ({cooldown}s)")
+                return None  # Still in cooldown for this gesture
         
         # Update frame buffer for consistency checking
         if raw_gesture:
@@ -125,6 +137,9 @@ class GestureDetector:
         # Check if gesture is consistent across frames
         recent_gestures = [g for g in self.gesture_frame_buffer if g is not None]
         
+        if recent_gestures:
+            logger.debug(f"Recent gestures: {recent_gestures} (need {self.consistency_frames} matches)")
+        
         # Require consistent gesture detection across frames
         if len(recent_gestures) >= self.consistency_frames:
             # All recent detections must be the same gesture
@@ -132,6 +147,7 @@ class GestureDetector:
                 gesture = recent_gestures[0]
                 self.last_gesture_time[gesture] = current_time
                 self.gesture_frame_buffer = []  # Reset buffer after triggering
+                logger.info(f"Gesture triggered: {gesture}")
                 return gesture
         
         return None
