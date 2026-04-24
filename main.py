@@ -23,12 +23,11 @@ from core.feature_extractor import FeatureExtractor
 from core.motion_detector import MotionDetector
 from core.dynamic_classifier import DynamicClassifier
 from utils.prediction_smoother import PredictionSmoother
-from utils.text_overlay import draw_prediction, draw_sentence_builder_ui
 from utils.text_to_speech import TextToSpeech
-from utils.gesture_display import draw_gesture_feedback, draw_sentence_display
+from utils.hud import draw_hud
 from config import (
     CAMERA_INDEX, CAM_WIDTH, CAM_HEIGHT,
-    COLOR_PRIMARY, COLOR_WARNING, COLOR_ACCENT, WINDOW_TITLE, CONFIDENCE_THRESHOLD,
+    COLOR_PRIMARY, COLOR_WARNING, COLOR_ACCENT, WINDOW_TITLE,
     TTS_ENABLED, TTS_SPEECH_RATE, TTS_VOLUME,
     MOTION_VELOCITY_THRESHOLD, MOTION_FRAMES_REQUIRED, MOTION_COOLDOWN_FRAMES,
     DYNAMIC_CONFIDENCE_THRESHOLD
@@ -100,6 +99,7 @@ class ChironaApp:
         self.displayed_sign = None
         self.displayed_confidence = None
         self.displayed_source = None
+        self.show_reference = False
         self.frame_count = 0
 
         # initilize gesture detector
@@ -193,8 +193,10 @@ class ChironaApp:
             text = self.sentence_builder.speak()
             if text:
                 logging.info(f"Manually triggered speech: '{text}'")      
+        if key == ord('r'):
+            self.show_reference = not self.show_reference
+
         if key == ord('h'):
-            # toggle between 1 and 2 hand modes
             self.max_hands_mode = 2 if self.max_hands_mode == 1 else 1
             self.detector.hands.max_num_hands = self.max_hands_mode
             print(f'Hand detection mode: {self.max_hands_mode} hand(s)')
@@ -240,37 +242,37 @@ class ChironaApp:
             else:
                 self.sentence_builder.update(None, current_time)
 
-            # Display info text overlays
-            cv2.putText(frame, f'FPS: {int(fps)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
-            cv2.putText(frame, f'Hands: {self.max_hands_mode}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
-
-            # Show classifier mode
+            # Determine mode display
             motion_state = self.motion_detector.state if hands_data else 'static'
+            buffer_progress = None
             if motion_state == 'buffering':
-                progress = self.motion_detector.get_buffer_progress()
-                cv2.putText(frame, f'Mode: Dynamic (buffering {int(progress*100)}%)', (10, 90),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_WARNING, 2)
+                mode_text = 'Mode: Dynamic (buffering)'
+                mode_color = COLOR_WARNING
+                buffer_progress = self.motion_detector.get_buffer_progress()
             elif self.displayed_source == 'dynamic' and self.displayed_sign:
-                cv2.putText(frame, 'Mode: Dynamic (LSTM)', (10, 90),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_ACCENT, 2)
+                mode_text = 'Mode: Dynamic (LSTM)'
+                mode_color = COLOR_ACCENT
             else:
-                cv2.putText(frame, 'Mode: Static (RF)', (10, 90),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
+                mode_text = 'Mode: Static (RF)'
+                mode_color = COLOR_PRIMARY
 
-            if self.classifier is None:
-                cv2.putText(frame, f'Min confidence: {CONFIDENCE_THRESHOLD:.0%}', (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 1)
+            tts_speaking = bool(self.tts and self.tts.is_currently_speaking())
 
-            # Display predicted sign bar if available
-            if self.displayed_sign and self.displayed_confidence:
-                draw_prediction(frame, self.displayed_sign, self.displayed_confidence)
-
-            # Display sentence builder UI
-            draw_sentence_builder_ui(frame, self.sentence_builder, current_time)
-            
-            # Display TTS speaking feedback (green "SPEAKING..." while TTS is active)
-            if self.tts and self.tts.is_currently_speaking():
-                from utils.gesture_display import draw_speaking_feedback
-                frame = draw_speaking_feedback(frame, True)
+            draw_hud(
+                frame,
+                fps=fps,
+                hand_count=self.max_hands_mode,
+                mode_text=mode_text,
+                mode_color=mode_color,
+                label=self.displayed_sign,
+                confidence=self.displayed_confidence,
+                source=self.displayed_source,
+                sentence_builder=self.sentence_builder,
+                current_time=current_time,
+                tts_speaking=tts_speaking,
+                buffer_progress=buffer_progress,
+                show_reference=self.show_reference,
+            )
             
             cv2.imshow(WINDOW_TITLE, frame)
 
