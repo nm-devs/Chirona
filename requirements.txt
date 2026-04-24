@@ -12,9 +12,9 @@ pyttsx3>=2.90.0
 pyaudio>=0.2.11
 comtypes>=1.1.0
 
-# --- Install manually when needed ---
-# Deep Learning (Phase 6) — install in isolation, conflicts with mediapipe protobuf
-# tensorflow>=2.13.0
+# Deep Learning (Phase 6) — may require: pip install protobuf>=3.20,<4 to restore mediapipe compat
+tensorflow>=2.13.0
+matplotlib>=3.7.0
 
 # Web App (pick one if building web version)
 # flask>=3.0.0
