@@ -20,13 +20,18 @@ from core.sign_classifier import SignClassifier
 from core.gesture_detector import GestureDetector
 from core.sentence_builder import SentenceBuilder
 from core.feature_extractor import FeatureExtractor
+from core.motion_detector import MotionDetector
+from core.dynamic_classifier import DynamicClassifier
 from utils.prediction_smoother import PredictionSmoother
 from utils.text_overlay import draw_prediction, draw_sentence_builder_ui
 from utils.text_to_speech import TextToSpeech
 from utils.gesture_display import draw_gesture_feedback, draw_sentence_display
 from config import (
     CAMERA_INDEX, CAM_WIDTH, CAM_HEIGHT,
-    COLOR_PRIMARY, WINDOW_TITLE, CONFIDENCE_THRESHOLD, TTS_ENABLED, TTS_SPEECH_RATE, TTS_VOLUME
+    COLOR_PRIMARY, COLOR_WARNING, COLOR_ACCENT, WINDOW_TITLE, CONFIDENCE_THRESHOLD,
+    TTS_ENABLED, TTS_SPEECH_RATE, TTS_VOLUME,
+    MOTION_VELOCITY_THRESHOLD, MOTION_FRAMES_REQUIRED, MOTION_COOLDOWN_FRAMES,
+    DYNAMIC_CONFIDENCE_THRESHOLD
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -71,38 +76,50 @@ class ChironaApp:
                 logging.error(f"Error initializing text-to-speech system: {e}")
                 self.tts = None
         
+        # Load dynamic (LSTM) classifier
+        self.dynamic_classifier = DynamicClassifier()
+        if self.dynamic_classifier.is_available:
+            logging.info("Dynamic LSTM classifier loaded successfully.")
+        else:
+            logging.warning("Dynamic LSTM classifier not available. Dynamic sign recognition disabled.")
+
+        # Motion detector for static ↔ dynamic switching
+        self.motion_detector = MotionDetector(
+            velocity_threshold=MOTION_VELOCITY_THRESHOLD,
+            motion_frames_required=MOTION_FRAMES_REQUIRED,
+            cooldown_frames=MOTION_COOLDOWN_FRAMES,
+        )
+
         # Runtime state variables
         self.prev_time = 0
         self.mode = "mouse"
-        self.prediction_history = deque(maxlen=5)  # For gesture vs sign distinction
-        self.max_hands_mode = 1 # start with single hand mode
+        self.prediction_history = deque(maxlen=5)
+        self.max_hands_mode = 1
         self.smoother = PredictionSmoother()
         self.sentence_builder = SentenceBuilder(tts=self.tts)
         self.displayed_sign = None
         self.displayed_confidence = None
+        self.displayed_source = None
         self.frame_count = 0
-        
+
         # initilize gesture detector
         self.gesture_detector = GestureDetector()
         self.last_detected_gesture = None
-        self.gesture_cooldown = 0.5  # seconds
+        self.gesture_cooldown = 0.5
 
     def _process_prediction(self, hand, hands_data):
         """Extract features, predict gesture, and smooth the output for the UI.
-        Uses OPTION A: Confidence-based filtering to detect gestures vs ASL signs."""
+        Uses motion detection to switch between static RF and dynamic LSTM classifiers."""
         landmarks = hand['landmarks']
-        
+
         # Check for raw gesture first to prevent classifier fallback during cooldown/hold
         raw_gesture = self.gesture_detector.detect_raw_gesture(hands_data)
-        
+
         # Get smoothed gesture (respects cooldown and consistency)
         gesture = self.gesture_detector.detect_gesture(hands_data)
-        
-        # If ANY raw gesture is detected, we skip letter classification to avoid accidental typing
-        # while holding a gesture (like thumbs-up or space)
+
         if raw_gesture:
             if gesture:
-                # handle gesture control immediately
                 logging.info(f"Gesture triggered: {gesture}")
                 if gesture == 'space':
                     self.sentence_builder.add_space()
@@ -118,40 +135,50 @@ class ChironaApp:
                     logging.info("Clear gesture: cleared sentence")
                 self.last_detected_gesture = gesture
             else:
-                # Gesture is recognized but might be in cooldown or inconsistent
-                # We still block classification to prevent random letters
                 logging.debug(f"Raw gesture '{raw_gesture}' detected but not triggered (cooldown/smoothing)")
-            
-            # Skip letter detection when any gesture is detected
             return
         else:
             self.last_detected_gesture = None
-        # Only predict every 3rd frame to improve FPS
-        if self.frame_count % 3 == 0:
-            # Extract and normalize features
-            features = self.fe.extract(landmarks)
-            normalized_features = self.fe.normalize(features)
 
-            # Predict gesture
-            if self.classifier is not None:
-                label, confidence = self.classifier.predict(normalized_features)
-                
-                #Track prediction history for gesture/sign distinction
-                if confidence > 0.70:  # Only track confident predictions
-                    self.prediction_history.append(label)
-                
-                # Check if this looks like a gesture (hand moving with 2+ different detections)
-                unique_predictions = len(set(self.prediction_history))
-                
-                # consistent predictions = likely ASL sign, varying predictions = likely gesture
-                if confidence > 0.0:
-                    self.smoother.add_prediction(label)
-                stable = self.smoother.get_stable_prediction()
+        # Extract and normalize features every frame (needed for motion detection)
+        features = self.fe.extract(landmarks)
+        normalized_features = self.fe.normalize(features)
 
-                # update displayd sign if stabl prediction is available
-                if stable is not None:
-                    self.displayed_sign = stable
+        # Update motion detector
+        motion_state = self.motion_detector.update(normalized_features)
+
+        if motion_state == 'dynamic_ready' and self.dynamic_classifier.is_available:
+            sequence = self.motion_detector.get_sequence()
+            if sequence is not None:
+                label, confidence = self.dynamic_classifier.predict(sequence)
+                if label and confidence >= DYNAMIC_CONFIDENCE_THRESHOLD:
+                    self.displayed_sign = label
                     self.displayed_confidence = confidence
+                    self.displayed_source = 'dynamic'
+                    logging.info(f"Dynamic sign detected: {label} ({confidence:.1%})")
+                else:
+                    logging.debug(f"LSTM prediction below threshold: {label} ({confidence:.1%})")
+                self.motion_detector.finish_dynamic(label, confidence)
+            return
+
+        if motion_state == 'buffering':
+            return
+
+        # Static classification (only every 3rd frame for FPS)
+        if self.frame_count % 3 == 0 and self.classifier is not None:
+            label, confidence = self.classifier.predict(normalized_features)
+
+            if confidence > 0.70:
+                self.prediction_history.append(label)
+
+            if confidence > 0.0:
+                self.smoother.add_prediction(label)
+            stable = self.smoother.get_stable_prediction()
+
+            if stable is not None:
+                self.displayed_sign = stable
+                self.displayed_confidence = confidence
+                self.displayed_source = 'static'
 
     def _handle_keypress(self):
         """Handle keyboard input. Returns False if app should exit."""
@@ -216,8 +243,20 @@ class ChironaApp:
             # Display info text overlays
             cv2.putText(frame, f'FPS: {int(fps)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
             cv2.putText(frame, f'Hands: {self.max_hands_mode}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
-            cv2.putText(frame, 'Mode: Sign Language', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
-            
+
+            # Show classifier mode
+            motion_state = self.motion_detector.state if hands_data else 'static'
+            if motion_state == 'buffering':
+                progress = self.motion_detector.get_buffer_progress()
+                cv2.putText(frame, f'Mode: Dynamic (buffering {int(progress*100)}%)', (10, 90),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_WARNING, 2)
+            elif self.displayed_source == 'dynamic' and self.displayed_sign:
+                cv2.putText(frame, 'Mode: Dynamic (LSTM)', (10, 90),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_ACCENT, 2)
+            else:
+                cv2.putText(frame, 'Mode: Static (RF)', (10, 90),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 2)
+
             if self.classifier is None:
                 cv2.putText(frame, f'Min confidence: {CONFIDENCE_THRESHOLD:.0%}', (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR_PRIMARY, 1)
 

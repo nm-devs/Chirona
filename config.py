@@ -56,6 +56,12 @@ SPREAD_THRESHOLD = 30 # Minimum normalized distance between thumb and pinky for 
 CURL_THRESHOLD = 40 # Threshold for determining if fingers are curled (0 to 1)
 THUMBS_THRESHOLD = 80 # Threshold for determining if thumb is up
 
+# ── Motion Detection (Static ↔ Dynamic switching) ────
+MOTION_VELOCITY_THRESHOLD = 0.012     # RMS velocity above this triggers dynamic mode
+MOTION_FRAMES_REQUIRED = 5            # Consecutive high-velocity frames to confirm motion
+MOTION_COOLDOWN_FRAMES = 15           # Frames to stay in static mode after an LSTM prediction
+DYNAMIC_CONFIDENCE_THRESHOLD = 0.60   # Min LSTM confidence to accept a dynamic prediction
+
 # ── Text-to-Speech (pyttsx3) ──────────────────────
 TTS_ENABLED = True                    # Enable/disable TTS system
 TTS_SPEECH_RATE = 150                 # Words per minute (default 150)
